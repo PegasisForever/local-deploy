@@ -1,5 +1,6 @@
 target/
-Cargo.lock
 dist/
 test-data/
+local-deploy-mcp
+local-deploy-mcp.sha256
 *.log
