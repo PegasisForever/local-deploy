@@ -22,4 +22,7 @@ VOLUME ["/data"]
 
 ENV LOCAL_DEPLOY_PUBLIC_ADDRESS=http://localhost:11000
 
+HEALTHCHECK --interval=30s --timeout=3s --start-period=10s --retries=3 \
+    CMD curl -sf http://127.0.0.1:11001/health || exit 1
+
 ENTRYPOINT ["/usr/local/bin/local-deploy-server"]
