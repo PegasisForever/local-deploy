@@ -1,7 +1,7 @@
 use anyhow::{anyhow, Context, Result};
 use axum::{
     body::Bytes,
-    extract::{Path as AxumPath, State},
+    extract::{DefaultBodyLimit, Path as AxumPath, State},
     http::{header, StatusCode},
     response::{IntoResponse, Response},
     routing::{get, post, put},
@@ -81,7 +81,10 @@ async fn main() -> Result<()> {
     let app = Router::new()
         .route("/health", get(health))
         .route("/allocate", post(allocate))
-        .route("/upload/{uuid}", put(upload))
+        .route(
+            "/upload/{uuid}",
+            put(upload).layer(DefaultBodyLimit::max(256 * 1024 * 1024)),
+        )
         .with_state(state);
 
     let listener = tokio::net::TcpListener::bind(format!("0.0.0.0:{MANAGEMENT_PORT}"))

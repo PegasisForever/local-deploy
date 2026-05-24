@@ -148,6 +148,24 @@ status="$(docker exec "$CONTAINER" curl -s -o /tmp/e2e-upload2.txt -w '%{http_co
 rm -f "$archive"
 assert_eq "second upload status" "409" "$status"
 
+log "Large upload (>2 MiB) should succeed"
+LARGE_UUID="$(docker exec "$CONTAINER" curl -sf -X POST http://127.0.0.1:11001/allocate | sed -n 's/.*"uuid":"\([^"]*\)".*/\1/p')"
+large_archive="$(mktemp /tmp/local-deploy-e2e-large-XXXXXX.tar.gz)"
+large_payload="$(mktemp /tmp/local-deploy-e2e-large-XXXXXX.bin)"
+large_payload_name="$(basename "$large_payload")"
+# 3 MiB of incompressible data stays well over axum's default 2 MiB body limit once tar.gz'd.
+dd if=/dev/urandom of="$large_payload" bs=1M count=3 status=none
+tar -czf "$large_archive" -C "$(dirname "$large_payload")" "$large_payload_name"
+docker cp "$large_archive" "$CONTAINER:/tmp/e2e-upload-large.tar.gz"
+large_status="$(docker exec "$CONTAINER" curl -s -o /tmp/e2e-upload-large.txt -w '%{http_code}' \
+  -X PUT \
+  -H 'Content-Type: application/gzip' \
+  --data-binary @/tmp/e2e-upload-large.tar.gz \
+  "http://127.0.0.1:11001/upload/$LARGE_UUID")"
+rm -f "$large_archive" "$large_payload"
+assert_eq "large upload status" "200" "$large_status"
+assert_http "large upload asset" 200 "$PUBLIC_URL/$LARGE_UUID/$large_payload_name"
+
 log "Results: $pass passed, $fail failed"
 if [[ "$fail" -gt 0 ]]; then
   exit 1
